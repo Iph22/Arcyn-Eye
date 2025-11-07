@@ -1,116 +1,77 @@
-"use client";
+'use client'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, Sparkles, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, Check } from 'lucide-react'
+import { arcynTokens } from '@/lib/design-tokens'
 
 interface ModelSelectorProps {
-  selectedModel: string;
-  onModelChange: (model: string) => void;
+  models: any[]
+  currentModel: any
+  onSelectModel: (model: any) => void
 }
 
-const AI_MODELS = [
-  {
-    id: "gpt-4",
-    name: "GPT-4",
-    provider: "OpenAI",
-    description: "Most capable model, best for complex tasks",
-    status: "connected",
-  },
-  {
-    id: "gpt-3.5-turbo",
-    name: "GPT-3.5 Turbo",
-    provider: "OpenAI",
-    description: "Fast and efficient for most tasks",
-    status: "connected",
-  },
-  {
-    id: "claude-opus",
-    name: "Claude Opus",
-    provider: "Anthropic",
-    description: "Powerful reasoning and analysis",
-    status: "disconnected",
-  },
-  {
-    id: "claude-sonnet",
-    name: "Claude Sonnet",
-    provider: "Anthropic",
-    description: "Balanced performance and speed",
-    status: "disconnected",
-  },
-  {
-    id: "gemini-pro",
-    name: "Gemini Pro",
-    provider: "Google",
-    description: "Multimodal capabilities",
-    status: "disconnected",
-  },
-];
-
-export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorProps) {
-  const currentModel = AI_MODELS.find((m) => m.id === selectedModel);
-
+export function ModelSelector({ models, currentModel, onSelectModel }: ModelSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="glass hover:bg-muted/50 transition-all duration-200 group"
-        >
-          <Sparkles className="mr-2 h-4 w-4 text-primary group-hover:rotate-12 transition-transform" />
-          <span className="font-medium">{currentModel?.name || "Select Model"}</span>
-          <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="glass-strong w-80" align="start">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          AI Models
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {AI_MODELS.map((model) => (
-          <DropdownMenuItem
-            key={model.id}
-            onClick={() => onModelChange(model.id)}
-            className={cn(
-              "flex items-start gap-3 p-3 cursor-pointer",
-              model.status === "disconnected" && "opacity-50"
-            )}
-            disabled={model.status === "disconnected"}
-          >
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{model.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {model.provider}
-                </span>
-                {model.status === "disconnected" && (
-                  <span className="text-xs text-destructive">
-                    Not connected
-                  </span>
-                )}
+    <div className="relative">
+      {/* Selector Button */}
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className="h-10 px-4 rounded-full backdrop-blur-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-3 transition-colors group"
+      >
+        <span className="text-2xl">{currentModel?.icon}</span>
+        <span className="text-sm font-medium text-white">{currentModel?.name}</span>
+        <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </motion.button>
+      
+      {/* Dropdown */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            
+            {/* Menu */}
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={arcynTokens.animations.spring}
+              className="absolute top-full mt-2 right-0 w-80 backdrop-blur-2xl bg-zinc-900/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
+            >
+              <div className="p-2 max-h-96 overflow-y-auto">
+                {models.map((model) => (
+                  <motion.button
+                    key={model.id}
+                    whileHover={{ x: 4 }}
+                    onClick={() => {
+                      onSelectModel(model)
+                      setIsOpen(false)
+                    }}
+                    className="w-full px-4 py-3 rounded-xl hover:bg-white/5 flex items-center gap-3 transition-colors group"
+                  >
+                    <span className="text-2xl">{model.icon}</span>
+                    <div className="flex-1 text-left">
+                      <div className="text-sm font-medium text-white">{model.name}</div>
+                      <div className="text-xs text-zinc-500">{model.provider}</div>
+                    </div>
+                    {currentModel?.id === model.id && (
+                      <Check className="w-4 h-4 text-cyan-400" />
+                    )}
+                  </motion.button>
+                ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {model.description}
-              </p>
-            </div>
-            {selectedModel === model.id && (
-              <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-            )}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-xs text-primary">
-          + Connect more models
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }

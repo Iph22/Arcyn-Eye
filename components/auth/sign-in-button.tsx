@@ -30,14 +30,15 @@ export function SignInButton() {
   };
 
   return (
-    <Button
-      onClick={handleSignIn}
-      disabled={isLoading}
-      size="lg"
-      className="glass-strong hover:bg-primary/20 transition-all duration-300 group"
-    >
-      <Chrome className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
-      {isLoading ? "Connecting..." : "Continue with Google"}
-    </Button>
+  <Button
+    onClick={handleSignIn}
+    disabled={isLoading}
+    size="lg"
+    className="flex items-center justify-center px-6 py-3 rounded-md bg-white/20 text-white font-semibold shadow-md hover:bg-white/30 transition-all duration-300 group"
+  >
+    <Chrome className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
+    {isLoading ? "Connecting..." : "Continue with Google"}
+  </Button>
+
   );
 }

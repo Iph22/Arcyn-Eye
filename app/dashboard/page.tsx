@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Settings, Cpu, User, Sliders } from 'lucide-react'
+import { Send, Settings, Cpu, User, Sliders, Sparkles, ChevronDown } from 'lucide-react'
 import { ChatMessageV0 } from '@/components/chat/chat-message-v0'
 import { FloatingButtonV0 } from '@/components/ui/floating-button-v0'
 import { ModelConnectionModal } from '@/components/settings/model-connection-modal'
+import { SettingsModalV0 } from '@/components/settings/settings-modal-v0'
 import { useModels } from '@/lib/hooks/useModels'
 import { useConversations } from '@/lib/hooks/useConversations'
 import { useChat } from '@/lib/hooks/useChat'
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [currentPage, setCurrentPage] = useState<Page>('chat')
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('profile')
   const [showConnectionModal, setShowConnectionModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [modelToConnect, setModelToConnect] = useState<any>(null)
   const [selectedModel, setSelectedModel] = useState<any>(null)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
@@ -76,8 +78,22 @@ export default function DashboardPage() {
   }
 
   // Handle model selection
-  function handleSelectModel(model: any) {
-    setSelectedModel(model)
+  function handleSelectModel(modelId: string) {
+    const model = models.find(m => m.id === modelId)
+    if (model) {
+      setSelectedModel(model)
+      setShowSettingsModal(false)
+    }
+  }
+
+  // Handle model connection from modal
+  function handleConnectModelFromModal(modelId: string) {
+    const model = models.find(m => m.id === modelId)
+    if (model) {
+      setModelToConnect(model)
+      setShowConnectionModal(true)
+      setShowSettingsModal(false)
+    }
   }
 
   // Handle connection success
@@ -137,7 +153,7 @@ export default function DashboardPage() {
       </button>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col pt-20">
         {/* Page Content */}
         <div className="flex-1 overflow-hidden">
           {currentPage === 'chat' && (
@@ -264,6 +280,15 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModalV0
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        models={models}
+        onSelectModel={handleSelectModel}
+        onConnectModel={handleConnectModelFromModal}
+      />
 
       {/* Connection Modal */}
       {modelToConnect && (

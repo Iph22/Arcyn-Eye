@@ -1,232 +1,98 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Send } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { FloatingNav } from "@/components/navigation/floating-nav"
-import { ConversationSidebar } from "@/components/chat/conversation-sidebar"
-import { ChatMessageV0 } from "@/components/chat/chat-message-v0"
-import { SettingsModalV0 } from "@/components/settings/settings-modal-v0"
-import { ModelConnectionModal } from "@/components/settings/model-connection-modal"
-import { FloatingButtonV0 } from "@/components/ui/floating-button-v0"
-import { AIModel, Conversation, Message } from "@/types/models"
-import { transformConnectionToModel, formatTimestamp } from "@/lib/model-utils"
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Send } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import { FloatingNav } from '@/components/navigation/floating-nav'
+import { ConversationSidebar } from '@/components/chat/conversation-sidebar'
+import { ChatMessageV0 } from '@/components/chat/chat-message-v0'
+import { SettingsModalV0 } from '@/components/settings/settings-modal-v0'
+import { ModelConnectionModal } from '@/components/settings/model-connection-modal'
+import { FloatingButtonV0 } from '@/components/ui/floating-button-v0'
+import { useModels } from '@/lib/hooks/useModels'
+import { useConversations } from '@/lib/hooks/useConversations'
+import { useChat } from '@/lib/hooks/useChat'
 
-export default function DashboardV0Page() {
+export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
   const [showConnectionModal, setShowConnectionModal] = useState(false)
-  const [modelToConnect, setModelToConnect] = useState<AIModel | null>(null)
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
-  const [models, setModels] = useState<AIModel[]>([])
-  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [modelToConnect, setModelToConnect] = useState<any>(null)
+  const [selectedModel, setSelectedModel] = useState<any>(null)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingModels, setIsLoadingModels] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
+  const [input, setInput] = useState('')
+  
+  const router = useRouter()
   const supabase = createClient()
 
-  // Load connected models from backend
+  // Use hooks for data management
+  const { models, loading: modelsLoading, refetch: refetchModels } = useModels()
+  const { conversations, createConversation, refetch: refetchConversations } = useConversations()
+  const { messages, sendMessage, loading: chatLoading } = useChat(
+    currentConversationId,
+    selectedModel?.id || ''
+  )
+
+  // Check authentication
   useEffect(() => {
-    loadModels()
-  }, [])
-
-  // Load conversations
-  useEffect(() => {
-    loadConversations()
-  }, [])
-
-  async function loadModels() {
-    try {
-      setIsLoadingModels(true)
-      const response = await fetch('/api/ai-connections')
-      
-      if (!response.ok) {
-        throw new Error('Failed to load models')
-      }
-      
-      const connections = await response.json()
-      
-      // Transform connections to AIModel format
-      const transformedModels = Array.isArray(connections) 
-        ? connections.map(transformConnectionToModel)
-        : []
-      
-      setModels(transformedModels)
-      
-      // Set first model as selected if none selected
-      if (transformedModels.length > 0 && !selectedModel) {
-        setSelectedModel(transformedModels[0])
-      }
-    } catch (error) {
-      console.error('Failed to load models:', error)
-      setError('Failed to load AI models. Please check your connection.')
-    } finally {
-      setIsLoadingModels(false)
-    }
-  }
-
-  async function loadConversations() {
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(20)
-      
-      if (error) throw error
-      
-      const formattedConversations: Conversation[] = (data || []).map(conv => ({
-        id: conv.id,
-        title: conv.title || 'New Conversation',
-        timestamp: formatTimestamp(conv.updated_at || conv.created_at),
-        created_at: conv.created_at,
-        updated_at: conv.updated_at,
-      }))
-      
-      setConversations(formattedConversations)
-    } catch (error) {
-      console.error('Failed to load conversations:', error)
-    }
-  }
-
-  async function loadConversation(conversationId: string) {
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
-      
-      if (error) throw error
-      
-      setMessages(data || [])
-      setCurrentConversationId(conversationId)
-    } catch (error) {
-      console.error('Failed to load conversation:', error)
-      setError('Failed to load conversation')
-    }
-  }
-
-  async function createNewChat() {
-    try {
+    async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        router.push('/login')
+      } else {
+        setUser(user)
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
 
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({ 
-          user_id: user.id,
-          title: 'New Conversation' 
-        })
-        .select()
-        .single()
-      
-      if (error) throw error
-      
-      setCurrentConversationId(data.id)
-      setMessages([])
-      setInput("")
-      
-      // Reload conversations to show the new one
-      loadConversations()
-    } catch (error) {
-      console.error('Failed to create conversation:', error)
-      setError('Failed to create new chat')
+  // Set first model as selected when models load
+  useEffect(() => {
+    if (models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0])
+    }
+  }, [models])
+
+  // Handle new chat creation
+  async function handleNewChat() {
+    const newConv = await createConversation()
+    if (newConv) {
+      setCurrentConversationId(newConv.id)
+      setInput('')
     }
   }
 
+  // Handle conversation selection
+  function handleSelectConversation(id: string) {
+    setCurrentConversationId(id)
+  }
+
+  // Handle send message
   async function handleSendMessage() {
-    if (!input.trim() || !selectedModel || isLoading) return
-    
+    if (!input.trim() || chatLoading) return
+
     // Create conversation if none exists
     if (!currentConversationId) {
-      await createNewChat()
-      // Wait a bit for conversation to be created
-      await new Promise(resolve => setTimeout(resolve, 100))
+      const newConv = await createConversation()
+      if (newConv) {
+        setCurrentConversationId(newConv.id)
+        // Wait a bit for state to update
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
     }
 
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-    }
-    
-    setMessages(prev => [...prev, userMessage])
-    const userInput = input
+    await sendMessage(input)
     setInput('')
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Save user message to database
-      if (currentConversationId) {
-        await supabase.from('messages').insert({
-          conversation_id: currentConversationId,
-          role: 'user',
-          content: userInput,
-        })
-      }
-
-      // Get AI response
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userInput,
-          model: selectedModel.id,
-          provider: selectedModel.provider,
-        })
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to get response')
-      }
-      
-      const data = await response.json()
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response || 'No response received',
-        model_used: selectedModel.name,
-      }
-      
-      setMessages(prev => [...prev, assistantMessage])
-
-      // Save AI message to database
-      if (currentConversationId) {
-        await supabase.from('messages').insert({
-          conversation_id: currentConversationId,
-          role: 'assistant',
-          content: data.response,
-          model_used: selectedModel.id,
-          provider: selectedModel.provider,
-        })
-
-        // Update conversation timestamp
-        await supabase
-          .from('conversations')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', currentConversationId)
-      }
-    } catch (error: any) {
-      console.error('Failed to send message:', error)
-      setError(error.message || 'Failed to send message')
-      
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: `Error: ${error.message || 'Failed to get response'}`,
-        model_used: 'System',
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsLoading(false)
-    }
+    
+    // Refresh conversations to update timestamps
+    refetchConversations()
   }
 
+  // Handle model selection
   function handleSelectModel(modelId: string) {
     const model = models.find(m => m.id === modelId)
     if (model) {
@@ -235,6 +101,7 @@ export default function DashboardV0Page() {
     }
   }
 
+  // Handle model connection
   function handleConnectModel(modelId: string) {
     const model = models.find(m => m.id === modelId)
     if (model) {
@@ -244,11 +111,19 @@ export default function DashboardV0Page() {
     }
   }
 
+  // Handle connection success
   function handleConnectionSuccess() {
     setShowConnectionModal(false)
     setModelToConnect(null)
-    // Reload models to show the newly connected one
-    loadModels()
+    refetchModels()
+  }
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full bg-black flex items-center justify-center">
+        <div className="text-cyan-400 text-xl">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -264,8 +139,8 @@ export default function DashboardV0Page() {
         {/* Sidebar */}
         <ConversationSidebar
           conversations={conversations}
-          onNewChat={createNewChat}
-          onSelectConversation={loadConversation}
+          onNewChat={handleNewChat}
+          onSelectConversation={handleSelectConversation}
           onSettingsClick={() => setShowSettings(true)}
         />
 
@@ -297,7 +172,7 @@ export default function DashboardV0Page() {
             ) : (
               <div className="w-full max-w-4xl space-y-4">
                 <AnimatePresence>
-                  {messages.map((msg, idx) => (
+                  {messages.map((msg: any, idx: number) => (
                     <ChatMessageV0
                       key={idx}
                       role={msg.role}
@@ -307,7 +182,7 @@ export default function DashboardV0Page() {
                   ))}
                 </AnimatePresence>
                 
-                {isLoading && (
+                {chatLoading && (
                   <div className="flex items-center gap-2 text-cyan-400">
                     <div className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" />
                     <div className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0.1s' }} />
@@ -321,7 +196,7 @@ export default function DashboardV0Page() {
           {/* Input Bar */}
           <motion.div
             className="mt-4 p-4 rounded-2xl flex gap-3 bg-white/5 border border-white/10 shadow-lg"
-            style={{ backdropFilter: "blur(12px)" }}
+            style={{ backdropFilter: 'blur(12px)' }}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
@@ -333,14 +208,14 @@ export default function DashboardV0Page() {
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               placeholder="Message ARCYN EYE..."
               className="flex-1 bg-transparent outline-none text-white placeholder-gray-500"
-              disabled={!selectedModel || isLoading}
+              disabled={!selectedModel || chatLoading}
             />
             <FloatingButtonV0
               icon={Send}
               onClick={handleSendMessage}
               variant="primary"
               size="md"
-              disabled={!input.trim() || !selectedModel || isLoading}
+              disabled={!input.trim() || !selectedModel || chatLoading}
             />
           </motion.div>
         </div>

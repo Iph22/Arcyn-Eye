@@ -167,9 +167,9 @@ export default function DashboardPage() {
                       animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
                       transition={{ repeat: Infinity, duration: 3 }}
                     >
-                      ✨
+                      
                     </motion.div>
-                    <h1 className="text-4xl font-bold text-center mb-2">Welcome to ARCYN EYE</h1>
+                    <h1 className="text-4xl font-bold text-center mb-2">Welcome to ARCYN UNIX</h1>
                     <p className="text-lg text-gray-400">Your unified AI interface</p>
                   </div>
                 ) : (
@@ -202,7 +202,7 @@ export default function DashboardPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  placeholder="Message ARCYN EYE..."
+                  placeholder="Message ARCYN UNIX..."
                   className="flex-1 bg-transparent outline-none text-white placeholder-gray-500"
                   disabled={!selectedModel || chatLoading}
                 />
